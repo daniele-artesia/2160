@@ -115,3 +115,51 @@ for (j in t.[2:length(t.)])
 #Create new dif reading which replaces negative diffs (likely where meter has been replaced) with meter read (likely the value acrued since new meter installed)
 total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total.PHC$reading.dif)
 View(total.PHC[,c(1:6, 11:15,17)])
+
+########################### calculate PHC with method 2 ###################################################################################
+total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
+
+########################### create time series ############################################################################################
+require("xts")
+new <- xts(total.PHC, as.POSIXct(total.PHC[,4], format="'%Y-%m-%d"))
+new.2 <- new[,c(1,18)]
+
+
+
+#apply.daily(new.2[,2], mean) # to check
+
+
+
+
+
+
+
+
+
+
+#sarah's method
+# New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+# colnames(New)[1] <- "Date"
+# 
+# PHC.list <- as.character(unique(total.PHC$pRef))
+# 
+# for (i in PHC.list)
+# {
+#   j <- i
+#   i <- total.PHC[total.PHC$pRef==i,]
+#   i <- i[,c("Date","PHC2")]
+#   colnames(i)[2] <- j
+#   New<-merge(New,i,by="Date", all.x=T)
+# }
+# 
+# New <- New[order(rev(New$Date)),]
+# for (i in PHC.list)
+# { 
+#   for (j in 1:nrow(New))
+#   {
+#     
+#     New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
+#   }
+# }
+# New <- New[order(New$Date),]
+# 

@@ -1,15 +1,117 @@
-#######################################read questionnaire   ############################################################################################
+#######################################  read questionnaire   ############################################################################################
 questionnaire <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R input files/questionnaire_from_SodwacOct2016.csv")
 
-#format data
+###############format data#############
 summary(questionnaire)
 str(questionnaire)
 
+#rename column
 colnames(questionnaire)[3] <- "pRef"
 questionnaire$pRef <- as.numeric(as.character(questionnaire$pRef))
+questionnaire<- questionnaire[order(questionnaire$pRef),]
 
+
+#set date
 library(lubridate)
 questionnaire$customerEndMoveIn=as.POSIXct(parse_date_time(questionnaire$customerEndMoveIn, c("Ymd HMS", "Ymd HM", "dmY HMS", "dmY HM", "dmY", "Ymd")),
                 format="%Y-%m-%d %H:%M:%S",tz="UTC")
 
+#set categorical as factors
+categorical <- c(13, 29,30,31,34,42,49,50,56,59,63,68,69,72,78)
+questionnaire[categorical] <- lapply(questionnaire[categorical], factor)
 questionnaire<- questionnaire[order(questionnaire$pRef),]
+
+
+
+
+
+#check customer in / customer out
+questionnaire$sameCustomer <- questionnaire$customerStart == questionnaire$customerEnd
+
+diff.customer <- subset(questionnaire, questionnaire$sameCustomer == FALSE)
+diff.customer<- diff.customer[order(diff.customer$pRef),]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################  read meter reads   ############################################################################################
+meter.reads <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R input files/meterreads_from_SodwacOct2016.csv")
+
+#prepare data
+meter.reads$pRef <- as.numeric(as.character(meter.reads$pRef))
+meter.reads <- meter.reads[order(meter.reads$pRef),]
+
+mr. <- as.character(unique(meter.reads$pRef)) 
+mr. <- mr.[order(mr.)]
+
+meter.reads$Date <- as.Date(meter.reads$Date, format="%d/%m/%Y")
+meter.reads$Reading <- as.numeric(as.character(meter.reads$Reading))
+meter.reads$year <- as.POSIXlt(meter.reads$Date)$year+1900
+meter.reads$month <- as.POSIXlt(meter.reads$Date)$mon+1           
+
+#remove flagged readings [ excluded ]
+meter.reads <- meter.reads[order(meter.reads$pRef, meter.reads$Date),]
+colnames(meter.reads)[7] <- "Flag"  ######### changed column name to use Sarah's code
+table(meter.reads$Flag)
+meter.reads$flag <- ifelse(meter.reads$Flag %in% c("cerr","err","err ","err - Meter Services agent problems","errr","excl"),"Excl",NA)
+meter.reads$flag <- ifelse(meter.reads$Flag %in% c("c"),"Changed",meter.reads$flag)
+meter.reads$flag <- ifelse(meter.reads$Flag %in% c("leak","Leak","leak - retro","leak now fixed?","leak?","leak?  "),"Leak",meter.reads$flag)
+table(meter.reads$flag,meter.reads$Flag)
+
+meter.reads$excl <- ifelse(meter.reads$flag=="Excl",1,0)
+meter.reads$excl <- ifelse(is.na(meter.reads$flag),0,meter.reads$excl)
+
+meter.reads.raw <- meter.reads
+
+meter.reads <- meter.reads[meter.reads$excl==0,]
+meter.reads <- meter.reads[!is.na(meter.reads$excl),]
+meter.reads <- meter.reads[order(meter.reads$pRef),]
+
+# calculate difference per reading
+t. <- as.numeric(as.character(unique(meter.reads$pRef)))
+
+for (j in t.[1])
+{
+  i <- meter.reads[meter.reads$pRef==j,]
+  i <- i[!is.na(i$pRef),]
+  i <- i[order(i$Date),]
+  i$date.dif <- diff(c(NA,i$Date))
+  i$reading.dif <- diff(c(NA,i$Reading))
+  assign("total.PHC",i)
+}
+
+for (j in t.[2:length(t.)])
+{
+  i <- meter.reads[meter.reads$pRef==j,]
+  i <- i[!is.na(i$pRef),]
+  i <- i[order(i$Date),]
+  i$date.dif <- diff(c(NA,i$Date))
+  i$reading.dif <- diff(c(NA,i$Reading))
+  total.PHC <- rbind(total.PHC,i)
+}
+
+#Create new dif reading which replaces negative diffs (likely where meter has been replaced) with meter read (likely the value acrued since new meter installed)
+total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total.PHC$reading.dif)
+View(total.PHC[,c(1:6, 11:15,17)])

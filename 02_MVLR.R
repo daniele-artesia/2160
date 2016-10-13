@@ -111,47 +111,94 @@ total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total
 total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
 View(total.PHC[,c(1, 3,13, 23, 25)])
 
-########################### create time series ############################################################################################
-require("xts")
-new <- xts(total.PHC, as.POSIXct(total.PHC[,4], format="'%Y-%m-%d"))
-new.2 <- new[,c(1,18)]
 
-new.3 <- subset(x = new.2, !is.na(new.3[,2]== F))
+### check outliers#####################################################
+require(reshape2)
+require(ggplot2)
 
-#apply.daily(new.2[,2], mean) # to check
+ggplot(melt(total.PHC[,c(3,25)]), aes(surveyType, value)) + geom_boxplot()
+
+### split into 2 dataset
+blind.PHC <- subset(total.PHC, total.PHC$surveyType == "Blind")
+sodwac.PHC <- subset(total.PHC, total.PHC$surveyType == "Sodwac")
+
+blind.outliers <- boxplot.stats(blind.PHC$PHC2)$out
+sodwac.outliers <- boxplot.stats(sodwac.PHC$PHC2)$out
+
+### outliers detector  function ###### remove outliers specified as 1.5 * Interquartile range
+outlierKD <- function(dt, var) {
+  var_name <- eval(substitute(var),eval(dt))
+  na1 <- sum(is.na(var_name))
+  m1 <- mean(var_name, na.rm = T)
+  par(mfrow=c(2, 2), oma=c(0,0,3,0))
+  boxplot(var_name, main="With outliers")
+  hist(var_name, main="With outliers", xlab=NA, ylab=NA)
+  outlier <- boxplot.stats(var_name)$out
+  mo <- mean(outlier)
+  var_name <- ifelse(var_name %in% outlier, NA, var_name)
+  boxplot(var_name, main="Without outliers")
+  hist(var_name, main="Without outliers", xlab=NA, ylab=NA)
+  title("Outlier Check", outer=TRUE)
+  na2 <- sum(is.na(var_name))
+  cat("Outliers identified:", na2 - na1, "n")
+  cat("Propotion (%) of outliers:", round((na2 - na1) / sum(!is.na(var_name))*100, 1), "n")
+  cat("Mean of the outliers:", round(mo, 2), "n")
+  m2 <- mean(var_name, na.rm = T)
+  cat("Mean without removing outliers:", round(m1, 2), "n")
+  cat("Mean if we remove outliers:", round(m2, 2), "n")
+  response <- readline(prompt="Do you want to remove outliers and to replace with NA? [yes/no]: ")
+  if(response == "y" | response == "yes"){
+    dt[as.character(substitute(var))] <- invisible(var_name)
+    assign(as.character(as.list(match.call())$dt), dt, envir = .GlobalEnv)
+    cat("Outliers successfully removed", "n")
+    return(invisible(dt))
+  } else{
+    cat("Nothing changed", "n")
+    return(invisible(var_name))
+  }
+}
 
 
+blind <- blind.PHC
+sodwac <- sodwac.PHC
 
+outlierKD(blind, PHC2)
+outlierKD(sodwac, PHC2)
 
-
-
-
-
+# ########################### create time series ############################################################################################
+# require("xts")
+# new <- xts(total.PHC, as.POSIXct(total.PHC[,4], format="'%Y-%m-%d"))
+# new.2 <- new[,c(1,18)]
+# 
+# new.3 <- subset(x = new.2, !is.na(new.3[,2]== F))
+# 
+# #apply.daily(new.2[,2], mean) # to check
+##########################################################################################################################################
 
 
 #sarah's method
-# New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-# colnames(New)[1] <- "Date"
-# 
-# PHC.list <- as.character(unique(total.PHC$pRef))
-# 
-# for (i in PHC.list)
-# {
-#   j <- i
-#   i <- total.PHC[total.PHC$pRef==i,]
-#   i <- i[,c("Date","PHC2")]
-#   colnames(i)[2] <- j
-#   New<-merge(New,i,by="Date", all.x=T)
-# }
-# 
-# New <- New[order(rev(New$Date)),]
-# for (i in PHC.list)
-# { 
-#   for (j in 1:nrow(New))
-#   {
-#     
-#     New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
-#   }
-# }
-# New <- New[order(New$Date),]
-# 
+New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+colnames(New)[1] <- "Date"
+
+PHC.list <- as.character(unique(total.PHC$pRef))
+
+for (i in PHC.list)
+{
+  j <- i
+  i <- total.PHC[total.PHC$pRef==i,]
+  i <- i[,c("Date","PHC2")]
+  colnames(i)[2] <- j
+  New<-merge(New,i,by="Date", all.x=T)
+}
+
+New <- New[order(rev(New$Date)),]
+for (i in PHC.list)
+{
+  for (j in 1:nrow(New))
+  {
+
+    New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
+  }
+}
+New <- New[order(New$Date),]
+

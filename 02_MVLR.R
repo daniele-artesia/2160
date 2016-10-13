@@ -190,15 +190,17 @@ total.PHC <- t.PHC[order(total.PHC$pRef, total.PHC$Date),]
 
 # ########################### create time series ############################################################################################
 New<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-colnames(New)[1] <- "Date"
-New.2 <-as.data.frame(matrix(nrow = 3183, ncol = 1737))
 pRef.list <- as.character(unique(total.PHC$pRef))
+colnames(New)[1] <- "Date"
+New.2 <-as.data.frame(matrix(nrow = length(New$Date), ncol = length(pRef.list))) #matrix with row = Dates  col = unique properties
 colnames(New.2) <- pRef.list
 
-timeserie <- cbind(New, New.2)
+timeseries <- cbind(New, New.2)
+timeseries <- timeseries[order(timeseries$Date),]
 
 rm(New)
 rm(New.2)
+
 
 
 

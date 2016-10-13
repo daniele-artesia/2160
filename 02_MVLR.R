@@ -1,4 +1,4 @@
-#######################################  read questionnaire   ############################################################################################
+#######################################  load and format questionnaire   ############################################################################################
 questionnaire <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R input files/questionnaire_from_SodwacOct2016.csv")
 
 ###############format data#############
@@ -21,42 +21,19 @@ categorical <- c(13, 29,30,31,34,42,49,50,56,59,63,68,69,72,78)
 questionnaire[categorical] <- lapply(questionnaire[categorical], factor)
 questionnaire<- questionnaire[order(questionnaire$pRef),]
 
-
-
-
-
 #check customer in / customer out
 questionnaire$sameCustomer <- questionnaire$customerStart == questionnaire$customerEnd
 
 diff.customer <- subset(questionnaire, questionnaire$sameCustomer == FALSE)
 diff.customer<- diff.customer[order(diff.customer$pRef),]
 
+#select properties were customer has not moved since the begininng of the year
+same.customer <- subset(questionnaire,questionnaire$sameCustomer == TRUE) 
+same.customer<- same.customer[order(same.customer$pRef),]
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#######################################  read meter reads   ############################################################################################
+#######################################  meter reads   ############################################################################################
 meter.reads <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R input files/meterreads_from_SodwacOct2016.csv")
 
 #prepare data
@@ -85,16 +62,31 @@ meter.reads$excl <- ifelse(is.na(meter.reads$flag),0,meter.reads$excl)
 
 meter.reads.raw <- meter.reads
 
+#remove exclusions
 meter.reads <- meter.reads[meter.reads$excl==0,]
 meter.reads <- meter.reads[!is.na(meter.reads$excl),]
 meter.reads <- meter.reads[order(meter.reads$pRef),]
 
+#remove reading prior 2005 (questionnaire dates back to 2015 only) & meter read from 2015 as they are wrong according to previous model
+meter.reads <- subset(meter.reads, meter.reads$Date >= "2005-01-01" & meter.reads$Date < "2015-01-01")
+
+
+##################### merge with properties and assign Sodwac or Bind ######################################################
+
+survey.properties <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R input files/property_from_SodwacOct2016.csv")
+survey.properties <- unique(survey.properties)
+survey.properties$pRef <- as.numeric(as.character(survey.properties$pRef))
+
+total.s <- merge(survey.properties, meter.reads[meter.reads$watStatOnReadDate == "u",], by="pRef")
+
 # calculate difference per reading
+total.s <- total.s[order(total.s$pRef, total.s$Date),]
 t. <- as.numeric(as.character(unique(meter.reads$pRef)))
 
+############### for total property without discrimination by zone######
 for (j in t.[1])
 {
-  i <- meter.reads[meter.reads$pRef==j,]
+  i <- total.s[total.s$pRef==j,]
   i <- i[!is.na(i$pRef),]
   i <- i[order(i$Date),]
   i$date.dif <- diff(c(NA,i$Date))
@@ -104,7 +96,7 @@ for (j in t.[1])
 
 for (j in t.[2:length(t.)])
 {
-  i <- meter.reads[meter.reads$pRef==j,]
+  i <- total.s[total.s$pRef==j,]
   i <- i[!is.na(i$pRef),]
   i <- i[order(i$Date),]
   i$date.dif <- diff(c(NA,i$Date))
@@ -114,17 +106,17 @@ for (j in t.[2:length(t.)])
 
 #Create new dif reading which replaces negative diffs (likely where meter has been replaced) with meter read (likely the value acrued since new meter installed)
 total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total.PHC$reading.dif)
-View(total.PHC[,c(1:6, 11:15,17)])
 
-########################### calculate PHC with method 2 ###################################################################################
+## calculate PHC with method 2  fro each reading 
 total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
+View(total.PHC[,c(1, 3,13, 23, 25)])
 
 ########################### create time series ############################################################################################
 require("xts")
 new <- xts(total.PHC, as.POSIXct(total.PHC[,4], format="'%Y-%m-%d"))
 new.2 <- new[,c(1,18)]
 
-
+new.3 <- subset(x = new.2, !is.na(new.3[,2]== F))
 
 #apply.daily(new.2[,2], mean) # to check
 

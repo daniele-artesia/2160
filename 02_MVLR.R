@@ -67,9 +67,17 @@ meter.reads <- meter.reads[meter.reads$excl==0,]
 meter.reads <- meter.reads[!is.na(meter.reads$excl),]
 meter.reads <- meter.reads[order(meter.reads$pRef),]
 
-#remove reading prior 2005 (questionnaire dates back to 2015 only) & meter read from 2015 as they are wrong according to previous model
-meter.reads <- subset(meter.reads, meter.reads$Date >= "2005-01-01" & meter.reads$Date < "2015-01-01")
+#remove reading prior 2005 (questionnaire dates back to 2005 only) & meter read from 2015 as they are wrong according to previous model
+meter.reads.1 <- subset(meter.reads, meter.reads$Date >= "2005-01-01" & meter.reads$Date < "2015-01-01") 
+meter.reads.2 <- subset(meter.reads, meter.reads$Date >= "2016-01-01")
+meter.reads <- rbind(meter.reads.1,meter.reads.2)
+meter.reads <- meter.reads[order(meter.reads$Date),]
 
+rm(meter.reads.1)
+rm(meter.reads.2)
+
+meter.reads$pRef <- as.numeric(as.character(meter.reads$pRef))
+meter.reads <- meter.reads[order(meter.reads$pRef),]
 
 ##################### merge with properties and assign Sodwac or Bind ######################################################
 
@@ -125,7 +133,7 @@ sodwac.PHC <- subset(total.PHC, total.PHC$surveyType == "Sodwac")
 blind.outliers <- boxplot.stats(blind.PHC$PHC2)$out
 sodwac.outliers <- boxplot.stats(sodwac.PHC$PHC2)$out
 
-### outliers detector  function ###### remove outliers specified as 1.5 * Interquartile range
+### outliers detector  function ###### remove outliers with Tukey's method (outliers ranged above and below the 1.5*IQR)
 outlierKD <- function(dt, var) {
   var_name <- eval(substitute(var),eval(dt))
   na1 <- sum(is.na(var_name))
@@ -157,7 +165,8 @@ outlierKD <- function(dt, var) {
     return(invisible(var_name))
   }
 }
-
+#############################################################
+#remove outliers
 
 blind <- blind.PHC
 sodwac <- sodwac.PHC
@@ -165,27 +174,21 @@ sodwac <- sodwac.PHC
 outlierKD(blind, PHC2)
 outlierKD(sodwac, PHC2)
 
-# ########################### create time series ############################################################################################
-# require("xts")
-# new <- xts(total.PHC, as.POSIXct(total.PHC[,4], format="'%Y-%m-%d"))
-# new.2 <- new[,c(1,18)]
-# 
-# new.3 <- subset(x = new.2, !is.na(new.3[,2]== F))
-# 
-# #apply.daily(new.2[,2], mean) # to check
-##########################################################################################################################################
 
+t.PHC <- rbind(blind, sodwac) 
+
+# ########################### create time series ############################################################################################
 
 #sarah's method
-New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+New <- as.data.frame(seq.Date(as.Date(min(t.PHC$Date)), as.Date(max(t.PHC$Date)), by="days"))
 colnames(New)[1] <- "Date"
 
-PHC.list <- as.character(unique(total.PHC$pRef))
+PHC.list <- as.character(unique(t.PHC$pRef))
 
 for (i in PHC.list)
 {
   j <- i
-  i <- total.PHC[total.PHC$pRef==i,]
+  i <- t.PHC[total.PHC$pRef==i,]
   i <- i[,c("Date","PHC2")]
   colnames(i)[2] <- j
   New<-merge(New,i,by="Date", all.x=T)

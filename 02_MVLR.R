@@ -10,7 +10,6 @@ colnames(questionnaire)[3] <- "pRef"
 questionnaire$pRef <- as.numeric(as.character(questionnaire$pRef))
 questionnaire<- questionnaire[order(questionnaire$pRef),]
 
-
 #set date
 library(lubridate)
 questionnaire$customerEndMoveIn=as.POSIXct(parse_date_time(questionnaire$customerEndMoveIn, c("Ymd HMS", "Ymd HM", "dmY HMS", "dmY HM", "dmY", "Ymd")),
@@ -30,8 +29,6 @@ diff.customer<- diff.customer[order(diff.customer$pRef),]
 #select properties were customer has not moved since the begininng of the year
 same.customer <- subset(questionnaire,questionnaire$sameCustomer == TRUE) 
 same.customer<- same.customer[order(same.customer$pRef),]
-
-
 
 #######################################  meter reads   ############################################################################################
 meter.reads <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R input files/meterreads_from_SodwacOct2016.csv")
@@ -60,7 +57,7 @@ table(meter.reads$flag,meter.reads$Flag)
 meter.reads$excl <- ifelse(meter.reads$flag=="Excl",1,0)
 meter.reads$excl <- ifelse(is.na(meter.reads$flag),0,meter.reads$excl)
 
-meter.reads.raw <- meter.reads
+meter.reads.raw <- meter.reads # backup
 
 #remove exclusions
 meter.reads <- meter.reads[meter.reads$excl==0,]
@@ -87,7 +84,6 @@ survey.properties$pRef <- as.numeric(as.character(survey.properties$pRef))
 
 total.s <- unique(merge(survey.properties, meter.reads[meter.reads$watStatOnReadDate == "u",], by="pRef"))
 
-
 total.s <- total.s[order(total.s$pRef, total.s$Date),]
 t. <- as.numeric(as.character(unique(meter.reads$pRef)))
 
@@ -100,7 +96,7 @@ total.PHC<- total.s %>%
   mutate(date.dif=c(NA,diff(Date)))%>%
   mutate(reading.dif=c(NA,diff(Reading)))
 
-######## Sarah's loop#####
+# ######## Sarah's loop#####
 # for (j in t.[1])
 # {
 #   i <- total.s[total.s$pRef==j,]
@@ -108,7 +104,7 @@ total.PHC<- total.s %>%
 #   i <- i[order(i$Date),]
 #   i$date.dif <- diff(c(NA,i$Date))
 #   i$reading.dif <- diff(c(NA,i$Reading))
-#   assign("total.PHC",i)
+#   assign("total.PHC.2",i)
 # }
 # 
 # for (j in t.[2:length(t.)])
@@ -118,18 +114,21 @@ total.PHC<- total.s %>%
 #   i <- i[order(i$Date),]
 #   i$date.dif <- diff(c(NA,i$Date))
 #   i$reading.dif <- diff(c(NA,i$Reading))
-#   total.PHC <- rbind(total.PHC,i)
+#   total.PHC.2 <- rbind(total.PHC.2,i)
 # }
+#
+# #checlk if my method is equal
+#
+# all.equal(total.PHC,total.PHC.2) # TRUE
 
-#Create new dif reading which replaces negative diffs (likely where meter has been replaced) with meter read (likely the value acrued since new meter installed)
+#Create new dif reading which replaces negative diffs (likely where meter has been replaced) with meter read (likely the value acrued since new meter installed) # from previous models
 total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total.PHC$reading.dif)
 
-## calculate PHC with method 2  fro each reading 
+## calculate PHC with method 2  for each reading 
 total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
-View(total.PHC[,c(1, 3,13, 22:25)])
+#View(total.PHC[,c(1, 3,13, 22:25)])
 
-
-### check outliers#####################################################
+########################################check outliers#####################################################
 require(reshape2)
 require(ggplot2)
 
@@ -175,15 +174,13 @@ outlierKD <- function(dt, var) {
   }
 }
 
-#############################################################
-#remove outliers for each surveyType
+######remove outliers for each surveyType 
 
 blind.PHC <- blind # backups
-sodwac.PHC <- sodwac
+sodwac.PHC <- sodwac # backups
 
 outlierKD(blind.PHC, PHC2) # need to write yes to both - will put outliers to NA
 outlierKD(sodwac.PHC, PHC2)
-
 
 total.PHC <- unique(rbind(blind.PHC, sodwac.PHC))
 total.PHC$pRef <- as.numeric(as.character(total.PHC$pRef))
@@ -191,13 +188,13 @@ total.PHC <- total.PHC[order(total.PHC$pRef, total.PHC$Date),]
 
 t.nooutliers <- as.numeric(as.character(unique(total.PHC$pRef)))
 
-############### create time series and fill with PHC value for timeperiods between readings ############################################################################################
+########################## create time series and fill with PHC value for timeperiods between readings ############################################################################################
 require(tidyr)
 require(reshape2)
 
 #for PHC
 t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
-t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with all NAs
+t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with NAs for the whole period
 t.PHC <- dcast(t.PHC, Date~pRef)
 
 ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
@@ -205,13 +202,14 @@ colnames(ts)[1] <- "Date"
 
 ts.PHC <- left_join(ts, t.PHC)
 
-# #with a time series
+
+ 
+##################### na.locf works but goes till final date of entire time series [how to solve????]#############
+# # #with a time series
 # t.rdif <- as.data.frame(total.PHC[,c(1,11,25)])
 # t.rdif <- unique(t.rdif[complete.cases(t.rdif),])
 # t.rdif <- dcast(t.rdif, Date~pRef)
-# 
-# #na.locf works but goes till final date [how to solve????]
-# 
+#
 # require(xts)
 # 
 # ts.rdif <- left_join(ts,t.rdif)
@@ -223,35 +221,35 @@ ts.PHC <- left_join(ts, t.PHC)
 # year.means <- apply.yearly(ts.rdif, colMeans, na.rm=TRUE)
 
 
-##########################sarah's method
-New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-colnames(New)[1] <- "Date"
-
-PHC.list <- as.character(unique(total.PHC$pRef))
-
-
-for (i in PHC.list)
-{
-  j <- i
-  i <- total.PHC[total.PHC$pRef==i,]
-  i <- i[,c("Date","PHC2")]
-  colnames(i)[2] <- j
-  New<-merge(New,i,by="Date", all.x=T)
-}
-
-New <- New[order(rev(New$Date)),]
-
-for (i in PHC.list)
-{
-  for (j in 1:nrow(New))
-  {
-
-    New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
-  }
-}
-New <- New[order(New$Date),]
-PHC2 <- New
-
-write.csv(PHC2, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/timeseries_s_method.csv")
-
+##########################sarah's method, working but takes ages ################################################
+# New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+# colnames(New)[1] <- "Date"
+# 
+# PHC.list <- as.character(unique(total.PHC$pRef))
+# 
+# 
+# for (i in PHC.list)
+# {
+#   j <- i
+#   i <- total.PHC[total.PHC$pRef==i,]
+#   i <- i[,c("Date","PHC2")]
+#   colnames(i)[2] <- j
+#   New<-merge(New,i,by="Date", all.x=T)
+# }
+# 
+# New <- New[order(rev(New$Date)),]
+# 
+# for (i in PHC.list)
+# {
+#   for (j in 1:nrow(New))
+#   {
+# 
+#     New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
+#   }
+# }
+# New <- New[order(New$Date),]
+# PHC2 <- New
+# 
+# write.csv(PHC2, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/timeseries_s_method.csv")
+###################################################################################################################
 

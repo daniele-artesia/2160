@@ -136,8 +136,8 @@ require(ggplot2)
 ggplot(melt(total.PHC[,c(3,25)]), aes(surveyType, value)) + geom_boxplot()
 
 ### split into 2 dataset
-blind.PHC <- subset(total.PHC, total.PHC$surveyType == "Blind")
-sodwac.PHC <- subset(total.PHC, total.PHC$surveyType == "Sodwac")
+blind <- subset(total.PHC, total.PHC$surveyType == "Blind")
+sodwac <- subset(total.PHC, total.PHC$surveyType == "Sodwac")
 
 #blind.outliers <- boxplot.stats(blind.PHC$PHC2)$out
 #sodwac.outliers <- boxplot.stats(sodwac.PHC$PHC2)$out
@@ -177,57 +177,62 @@ outlierKD <- function(dt, var) {
 #############################################################
 #remove outliers for each surveyType
 
-blind <- blind.PHC # backups
-sodwac <- sodwac.PHC
+blind.PHC <- blind # backups
+sodwac.PHC <- sodwac
 
-outlierKD(blind, PHC2) # need to write yes to both - will put outliers to NA
-outlierKD(sodwac, PHC2)
+outlierKD(blind.PHC, PHC2) # need to write yes to both - will put outliers to NA
+outlierKD(sodwac.PHC, PHC2)
 
 
-total.PHC <- rbind(blind, sodwac)
+total.PHC <- rbind(blind.PHC, sodwac.PHC)
 total.PHC$pRef <- as.numeric(as.character(total.PHC$pRef))
-total.PHC <- t.PHC[order(total.PHC$pRef, total.PHC$Date),]
+total.PHC <- total.PHC[order(total.PHC$pRef, total.PHC$Date),]
 
 # ########################### create time series ############################################################################################
-New<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-pRef.list <- as.character(unique(total.PHC$pRef))
-colnames(New)[1] <- "Date"
-New.2 <-as.data.frame(matrix(nrow = length(New$Date), ncol = length(pRef.list))) #matrix with row = Dates  col = unique properties
-colnames(New.2) <- pRef.list
-
-timeseries <- cbind(New, New.2)
-timeseries <- timeseries[order(timeseries$Date),]
-
-rm(New)
-rm(New.2)
-
-
-
-
-
-#sarah's method
-# New <- as.data.frame(seq.Date(as.Date(min(t.PHC$Date)), as.Date(max(t.PHC$Date)), by="days"))
+# New<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+# pRef.list <- as.character(unique(total.PHC$pRef))
 # colnames(New)[1] <- "Date"
+# New.2 <-as.data.frame(matrix(nrow = length(New$Date), ncol = length(pRef.list))) #matrix with row = Dates  col = unique properties
+# colnames(New.2) <- pRef.list
 # 
-# PHC.list <- as.character(unique(t.PHC$pRef))
+# timeseries <- cbind(New, New.2)
+# timeseries <- timeseries[order(timeseries$Date),]
 # 
+# rm(New)
+# rm(New.2)
+
+######### fill with exact values ############# HOW TO??????????????????
+
+
+
+
+##########################sarah's method
+New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+colnames(New)[1] <- "Date"
+
+
+
+
 # for (i in PHC.list)
 # {
 #   j <- i
-#   i <- t.PHC[total.PHC$pRef==i,]
+#   i <- total.PHC[total.PHC$pRef==i,]
 #   i <- i[,c("Date","PHC2")]
 #   colnames(i)[2] <- j
 #   New<-merge(New,i,by="Date", all.x=T)
 # }
 # 
 # New <- New[order(rev(New$Date)),]
+# 
 # for (i in PHC.list)
-# {
+# { 
 #   for (j in 1:nrow(New))
 #   {
-# 
+#     
 #     New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
 #   }
 # }
 # New <- New[order(New$Date),]
+# PHC2 <- New
+# 
 

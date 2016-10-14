@@ -189,12 +189,15 @@ total.PHC <- unique(rbind(blind.PHC, sodwac.PHC))
 total.PHC$pRef <- as.numeric(as.character(total.PHC$pRef))
 total.PHC <- total.PHC[order(total.PHC$pRef, total.PHC$Date),]
 
+t.nooutliers <- as.numeric(as.character(unique(total.PHC$pRef)))
+
 ############### create time series and fill with PHC value for timeperiods between readings ############################################################################################
 require(tidyr)
 require(reshape2)
 
+#for PHC
 t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
-t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division
+t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with all NAs
 t.PHC <- dcast(t.PHC, Date~pRef)
 
 ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
@@ -202,46 +205,53 @@ colnames(ts)[1] <- "Date"
 
 ts.PHC <- left_join(ts, t.PHC)
 
-
-require(zoo)
-
-
-
-
-
-
-
+# #with a time series
+# t.rdif <- as.data.frame(total.PHC[,c(1,11,25)])
+# t.rdif <- unique(t.rdif[complete.cases(t.rdif),])
+# t.rdif <- dcast(t.rdif, Date~pRef)
+# 
+# #na.locf works but goes till final date [how to solve????]
+# 
+# require(xts)
+# 
+# ts.rdif <- left_join(ts,t.rdif)
+# 
+# ts.rdif <- xts(ts.rdif, order.by = ts.rdif$Date)
+# ts.rdif <- ts.rdif[,-1]
+# storage.mode(ts.rdif) <- "numeric"
+# 
+# year.means <- apply.yearly(ts.rdif, colMeans, na.rm=TRUE)
 
 
 ##########################sarah's method
-# New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-# colnames(New)[1] <- "Date" 
-# 
-# PHC.list <- as.character(unique(total.PHC$pRef))
-# 
-# 
-# for (i in PHC.list)
-# {
-#   j <- i
-#   i <- total.PHC[total.PHC$pRef==i,]
-#   i <- i[,c("Date","PHC2")]
-#   colnames(i)[2] <- j
-#   New<-merge(New,i,by="Date", all.x=T)
-# }
-# 
-# New <- New[order(rev(New$Date)),]
-# 
-# for (i in PHC.list)
-# {
-#   for (j in 1:nrow(New))
-#   {
-# 
-#     New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
-#   }
-# }
-# New <- New[order(New$Date),]
-# PHC2 <- New
-# 
-# write.csv(PHC2, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/timeseries_s_method.csv")
+New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+colnames(New)[1] <- "Date"
+
+PHC.list <- as.character(unique(total.PHC$pRef))
+
+
+for (i in PHC.list)
+{
+  j <- i
+  i <- total.PHC[total.PHC$pRef==i,]
+  i <- i[,c("Date","PHC2")]
+  colnames(i)[2] <- j
+  New<-merge(New,i,by="Date", all.x=T)
+}
+
+New <- New[order(rev(New$Date)),]
+
+for (i in PHC.list)
+{
+  for (j in 1:nrow(New))
+  {
+
+    New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
+  }
+}
+New <- New[order(New$Date),]
+PHC2 <- New
+
+write.csv(PHC2, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/timeseries_s_method.csv")
 
 

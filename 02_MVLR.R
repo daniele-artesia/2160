@@ -85,7 +85,7 @@ survey.properties <- read.csv("T:\\live\\2160 SWW PCC Sept 2016/02 Delivery/R in
 survey.properties <- unique(survey.properties)
 survey.properties$pRef <- as.numeric(as.character(survey.properties$pRef))
 
-total.s <- merge(survey.properties, meter.reads[meter.reads$watStatOnReadDate == "u",], by="pRef")
+total.s <- unique(merge(survey.properties, meter.reads[meter.reads$watStatOnReadDate == "u",], by="pRef"))
 
 
 total.s <- total.s[order(total.s$pRef, total.s$Date),]
@@ -126,7 +126,7 @@ total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total
 
 ## calculate PHC with method 2  fro each reading 
 total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
-View(total.PHC[,c(1, 3,13, 22, 23, 25)])
+View(total.PHC[,c(1, 3,13, 22:25)])
 
 
 ### check outliers#####################################################
@@ -174,6 +174,7 @@ outlierKD <- function(dt, var) {
     return(invisible(var_name))
   }
 }
+
 #############################################################
 #remove outliers for each surveyType
 
@@ -184,35 +185,41 @@ outlierKD(blind.PHC, PHC2) # need to write yes to both - will put outliers to NA
 outlierKD(sodwac.PHC, PHC2)
 
 
-total.PHC <- rbind(blind.PHC, sodwac.PHC)
+total.PHC <- unique(rbind(blind.PHC, sodwac.PHC))
 total.PHC$pRef <- as.numeric(as.character(total.PHC$pRef))
 total.PHC <- total.PHC[order(total.PHC$pRef, total.PHC$Date),]
 
-# ########################### create time series ############################################################################################
-# New<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-# pRef.list <- as.character(unique(total.PHC$pRef))
-# colnames(New)[1] <- "Date"
-# New.2 <-as.data.frame(matrix(nrow = length(New$Date), ncol = length(pRef.list))) #matrix with row = Dates  col = unique properties
-# colnames(New.2) <- pRef.list
-# 
-# timeseries <- cbind(New, New.2)
-# timeseries <- timeseries[order(timeseries$Date),]
-# 
-# rm(New)
-# rm(New.2)
+############### create time series and fill with PHC value for timeperiods between readings ############################################################################################
+require(tidyr)
+require(reshape2)
 
-######### fill with exact values ############# HOW TO??????????????????
+t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
+t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division
+t.PHC <- dcast(t.PHC, Date~pRef)
+
+ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+colnames(ts)[1] <- "Date"
+
+ts.PHC <- left_join(ts, t.PHC)
+
+
+require(zoo)
+
+
+
+
+
 
 
 
 
 ##########################sarah's method
-New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-colnames(New)[1] <- "Date"
-
-
-
-
+# New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+# colnames(New)[1] <- "Date" 
+# 
+# PHC.list <- as.character(unique(total.PHC$pRef))
+# 
+# 
 # for (i in PHC.list)
 # {
 #   j <- i
@@ -225,14 +232,16 @@ colnames(New)[1] <- "Date"
 # New <- New[order(rev(New$Date)),]
 # 
 # for (i in PHC.list)
-# { 
+# {
 #   for (j in 1:nrow(New))
 #   {
-#     
+# 
 #     New[j,i] <- ifelse(is.na(New[j,i]),New[(j-1),i],New[j,i])
 #   }
 # }
 # New <- New[order(New$Date),]
 # PHC2 <- New
 # 
+# write.csv(PHC2, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/timeseries_s_method.csv")
+
 

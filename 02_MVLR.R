@@ -138,8 +138,8 @@ total.PHC$PHC2[is.na(total.PHC$PHC2) & is.na(total.PHC$date.dif)] <- "first_read
 
 # select just row with first_reading note
 first.readings <- total.PHC[total.PHC$PHC2 %in% "first_reading",]
-View(table(first.readings$pRef))
-View(total.PHC[,c(1,3,11,13, 22:25)])
+#View(table(first.readings$pRef))
+#View(total.PHC[,c(1,3,11,13, 22:25)])
 
 #remove first reading note from dataframe in order to check for outliers
 total.PHC <- total.PHC[!total.PHC$PHC2 %in% "first_reading",]
@@ -211,31 +211,52 @@ t.nooutliers <- as.numeric(as.character(unique(total.PHC$pRef)))
 require(tidyr)
 require(reshape2)
 
-#for PHC
-t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
-t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with NAs for the whole period
-t.PHC <- dcast(t.PHC, Date~pRef)
-
-first.readings <- unique(first.readings[,c(1,11,25)])
-f.readings <- dcast(first.readings, Date~pRef)
 
 
-TS.PHC <- rbind.fill(t.PHC,f.readings) # bind dataframes with different length
-TS.PHC <- TS.PHC[order(TS.PHC$Date),]
-
-ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
-colnames(ts)[1] <- "Date"
 
 
-ts.PHC <- left_join(ts, TS.PHC) # obtain full time series
 
-##################### fill time series with mean value (na.locf works)#########################################################
-require(zoo)
 
-ts.PHC <- na.locf(ts.PHC, fromLast = T) # fill with value below
-ts.PHC[ts.PHC== "first_reading"] <- NA #replace first reading with NAs
 
-write.csv(ts.PHC, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/all properties averages.csv")
+
+
+
+
+
+
+
+
+
+
+# #for PHC ################### this will not backdate everything
+# t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
+# t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with NAs for the whole period
+# t.PHC <- dcast(t.PHC, Date~pRef)
+# t.PHC <- t.PHC[order(t.PHC$Date),]
+# 
+# first.readings <- unique(first.readings[,c(1,11,25)])
+# f.readings <- dcast(first.readings, Date~pRef)
+# f.readings <- f.readings[order(f.readings$Date),]
+# 
+# 
+#  
+# # TS.PHC <- rbind.fill(t.PHC,f.readings) # bind dataframes with different length
+# # TS.PHC <- TS.PHC[order(TS.PHC$Date),]
+# 
+# 
+# ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
+# colnames(ts)[1] <- "Date"
+# 
+# 
+# ts.PHC <- left_join(ts, TS.PHC) # obtain full time series
+# 
+# ##################### fill time series with mean value (na.locf works)#########################################################
+# require(zoo)
+# 
+# ts.PHC <- na.locf(ts.PHC, fromLast = T) # fill with value below
+# ts.PHC[ts.PHC== "first_reading"] <- NA #replace first reading with NAs
+# 
+# write.csv(ts.PHC, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/all properties averages.csv")
 
 
 ##########################sarah's method  ################################################

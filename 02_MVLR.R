@@ -85,10 +85,12 @@ survey.properties$pRef <- as.numeric(as.character(survey.properties$pRef))
 total.s <- unique(merge(survey.properties, meter.reads[meter.reads$watStatOnReadDate == "u",], by="pRef"))
 
 total.s <- total.s[order(total.s$pRef, total.s$Date),]
-t. <- as.numeric(as.character(unique(meter.reads$pRef)))
+
+t. <- as.numeric(as.character(unique(total.s$pRef)))
 
 
 ############### # calculate difference per reading ###################################
+require(plyr)
 require(dplyr)
 
 total.PHC<- total.s %>% 
@@ -96,6 +98,9 @@ total.PHC<- total.s %>%
   group_by(pRef)%>%
   mutate(date.dif=c(NA,diff(Date)))%>%
   mutate(reading.dif=c(NA,diff(Reading)))
+
+
+  
 
 # ######## Sarah's loop#####
 # for (j in t.[1])
@@ -127,12 +132,18 @@ total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total
 
 ## calculate PHC with method 2  for each reading 
 total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
-#View(total.PHC[,c(1, 3,13, 22:25)])
 
-#remove reading with note = addedd during data cleanse ...... reading missing (would produce unnecessary zeros)
+#assign first reading to NAs
+total.PHC$PHC2[is.na(total.PHC$PHC2) & is.na(total.PHC$date.dif)] <- "first_reading"
 
-notes <- as.data.frame(table(total.s$Note))
-total.PHC <- total.PHC[!grepl("Added during data cleanse", total.PHC$Note),]
+# select just row with first_reading note
+first.readings <- total.PHC[total.PHC$PHC2 %in% "first_reading",]
+View(table(first.readings$pRef))
+View(total.PHC[,c(1,3,11,13, 22:25)])
+
+#remove first reading note from dataframe in order to check for outliers
+total.PHC <- total.PHC[!total.PHC$PHC2 %in% "first_reading",]
+total.PHC$PHC2 <- as.numeric(total.PHC$PHC2)
 
 
 ########################################check outliers#####################################################
@@ -181,6 +192,7 @@ outlierKD <- function(dt, var) {
   }
 }
 
+
 ######remove outliers for each surveyType 
 
 blind.PHC <- blind # backups
@@ -204,31 +216,29 @@ t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
 t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with NAs for the whole period
 t.PHC <- dcast(t.PHC, Date~pRef)
 
+first.readings <- unique(first.readings[,c(1,11,25)])
+f.readings <- dcast(first.readings, Date~pRef)
+
+
+TS.PHC <- rbind.fill(t.PHC,f.readings) # bind dataframes with different length
+TS.PHC <- TS.PHC[order(TS.PHC$Date),]
+
 ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
 colnames(ts)[1] <- "Date"
 
-ts.PHC <- left_join(ts, t.PHC) 
+
+ts.PHC <- left_join(ts, TS.PHC) # obtain full time series
+
+##################### fill time series with mean value (na.locf works)#########################################################
+require(zoo)
+
+ts.PHC <- na.locf(ts.PHC, fromLast = T) # fill with value below
+ts.PHC[ts.PHC== "first_reading"] <- NA #replace first reading with NAs
+
+write.csv(ts.PHC, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/all properties averages.csv")
 
 
- 
-##################### na.locf works but goes till final date of entire time series [how to solve????]#############
-# # #with a time series
-# t.rdif <- as.data.frame(total.PHC[,c(1,11,25)])
-# t.rdif <- unique(t.rdif[complete.cases(t.rdif),])
-# t.rdif <- dcast(t.rdif, Date~pRef)
-#
-# require(xts)
-# 
-# ts.rdif <- left_join(ts,t.rdif)
-# 
-# ts.rdif <- xts(ts.rdif, order.by = ts.rdif$Date)
-# ts.rdif <- ts.rdif[,-1]
-# storage.mode(ts.rdif) <- "numeric"
-# 
-# year.means <- apply.yearly(ts.rdif, colMeans, na.rm=TRUE)
-
-
-##########################sarah's method, working but takes ages ################################################
+##########################sarah's method  ################################################
 # New <- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
 # colnames(New)[1] <- "Date"
 # 

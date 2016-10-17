@@ -233,7 +233,6 @@ no.bias.PHC <- cbind(ts.sodwac.PHC,ts.blind.PHC)
 #######calculate annual means per HH based on NON-corrected results)
 xts.PHC <- xts(ts.PHC, order.by = ts.PHC$Date)
 xts.PHC <- xts.PHC[,-1]
-xts.PHC <- sapply(xts.PHC, as.numeric)
 storage.mode(xts.PHC) <- "numeric"
 
 HH.means <- as.data.frame(apply.yearly(xts.PHC,colMeans))
@@ -241,10 +240,19 @@ HH.means$year <- rownames(HH.means)
 HH.means <- HH.means %>% select(year,everything())
 HH.means$year <- year(HH.means$year)
 
-write.csv(HH.means, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/HHmeans_withnocorrectionfactor.csv")
+#write.csv(HH.means, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/HHmeans_withnocorrectionfactor.csv")
 
-#
+# with correction factor
+xts.PHC <- xts(no.bias.PHC, order.by = ts.PHC$Date)
+xts.PHC <- xts.PHC[,-1]
+storage.mode(xts.PHC) <- "numeric"
 
+HH.means <- as.data.frame(apply.yearly(xts.PHC,colMeans))
+HH.means$year <- rownames(HH.means)
+HH.means <- HH.means %>% select(year,everything())
+HH.means$year <- year(HH.means$year)
+
+#write.csv(HH.means, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/HHmeans_withcorrectionfactor.csv")
 
 
 

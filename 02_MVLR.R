@@ -177,7 +177,6 @@ outlierKD <- function(dt, var) {
 }
 
 ######remove outliers for each surveyType 
-
 blind.PHC <- blind # backups
 sodwac.PHC <- sodwac # backups
 
@@ -194,6 +193,7 @@ t.nooutliers <- as.numeric(as.character(unique(total.PHC$pRef)))
 require(tidyr)
 require(reshape2)
 require(zoo)
+require(xts)
 
 t.PHC<- as.data.frame(total.PHC[,c(1,11,25)])
 t.PHC <- t.PHC[complete.cases(t.PHC), ] # remove non value derived from division and property with NAs for the whole period
@@ -230,9 +230,18 @@ no.bias.PHC <- cbind(ts.sodwac.PHC,ts.blind.PHC)
 ##########means combined with correcting for SODWAC factor###
 #write.csv(no.bias.PHC, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/all properties averages with correcting factor.csv")
 
+#######calculate annual means per HH based on NON-corrected results)
+xts.PHC <- xts(ts.PHC, order.by = ts.PHC$Date)
+xts.PHC <- xts.PHC[,-1]
+xts.PHC <- sapply(xts.PHC, as.numeric)
+storage.mode(xts.PHC) <- "numeric"
 
+HH.means <- as.data.frame(apply.yearly(xts.PHC,colMeans))
+HH.means$year <- rownames(HH.means)
+HH.means <- HH.means %>% select(year,everything())
+HH.means$year <- year(HH.means$year)
 
-
+write.csv(HH.means, "t:/live/2160 SWW PCC Sept 2016/02 Delivery/R output files/HHmeans_withnocorrectionfactor.csv")
 
 #
 

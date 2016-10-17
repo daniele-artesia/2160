@@ -87,6 +87,7 @@ total.s <- unique(merge(survey.properties, meter.reads[meter.reads$watStatOnRead
 total.s <- total.s[order(total.s$pRef, total.s$Date),]
 t. <- as.numeric(as.character(unique(meter.reads$pRef)))
 
+
 ############### # calculate difference per reading ###################################
 require(dplyr)
 
@@ -127,6 +128,12 @@ total.PHC$reading.dif2 <- ifelse(total.PHC$reading.dif<0,total.PHC$Reading,total
 ## calculate PHC with method 2  for each reading 
 total.PHC$PHC2 <- total.PHC$reading.dif2/total.PHC$date.dif 
 #View(total.PHC[,c(1, 3,13, 22:25)])
+
+#remove reading with note = addedd during data cleanse ...... reading missing (would produce unnecessary zeros)
+
+notes <- as.data.frame(table(total.s$Note))
+total.PHC <- total.PHC[!grepl("Added during data cleanse", total.PHC$Note),]
+
 
 ########################################check outliers#####################################################
 require(reshape2)
@@ -200,7 +207,7 @@ t.PHC <- dcast(t.PHC, Date~pRef)
 ts<- as.data.frame(seq.Date(as.Date(min(total.PHC$Date)), as.Date(max(total.PHC$Date)), by="days"))
 colnames(ts)[1] <- "Date"
 
-ts.PHC <- left_join(ts, t.PHC)
+ts.PHC <- left_join(ts, t.PHC) 
 
 
  
